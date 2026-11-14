@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Đại Kiều — Website bán hàng (Next.js)
 
-## Getting Started
+Website bán hàng gia dụng, quần áo và vải. Giao diện tối giản, sang trọng; chức năng tương tự daikieu.com:
+tìm kiếm, xem theo danh mục, trang sản phẩm (chọn màu / kích cỡ / số lượng), giỏ hàng và đặt hàng
+**thanh toán khi nhận hàng (COD)**.
 
-First, run the development server:
+## Chạy dự án
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm run build && npm run start   # bản production
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Đặt domain thật cho sitemap, canonical, Open Graph:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+NEXT_PUBLIC_SITE_URL=https://ten-mien-cua-ban.com
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Các trang
 
-## Learn More
+| Đường dẫn | Nội dung |
+| --- | --- |
+| `/` | Trang chủ: banner, dải danh mục con, 10 sản phẩm nổi bật, khối theo từng danh mục lớn, 15 sản phẩm gợi ý |
+| `/san-pham` | Tất cả sản phẩm: bộ lọc bên trái (danh mục, khoảng giá `?min=&max=`, đang giảm giá `?sale=1`), tìm kiếm `?q=`, sắp xếp `?sort=` |
+| `/danh-muc/[slug]` | Hàng gia dụng (nấu nướng, làm mát & sưởi, vệ sinh nhà cửa, nhà bếp, chăn ga gối, đèn & trang trí, nội thất), Quần áo, Vải |
+| `/san-pham/[slug]` | Chi tiết sản phẩm, thêm vào giỏ / mua ngay |
+| `/thanh-toan` | Giỏ hàng + thông tin nhận hàng + đặt hàng COD |
+| `/dang-nhap`, `/tai-khoan` | Đăng nhập bằng Google, trang tài khoản (đăng xuất) |
+| `/gioi-thieu`, `/lien-he`, `/chinh-sach/[slug]` | Giới thiệu, liên hệ, chính sách |
 
-To learn more about Next.js, take a look at the following resources:
+## Chức năng
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Tìm kiếm**: thanh tìm kiếm giữa header, hiện "Tìm kiếm phổ biến" khi bấm vào; menu danh mục nằm ngay bên dưới.
+- **Giỏ hàng**: lưu trong trình duyệt (`src/lib/cart-store.ts`), mở dạng ngăn kéo từ biểu tượng túi.
+- **Đặt hàng**: server action `src/app/thanh-toan/actions.ts` kiểm tra dữ liệu và **tự tính lại tổng tiền** từ dữ liệu sản phẩm.
+  Đơn hàng hiện **chưa được lưu** — cần nối hàm `saveOrder()` với API / cơ sở dữ liệu / email.
+- Vải bán theo mét (`unit` trong dữ liệu sản phẩm), quần áo có chọn kích cỡ.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Đăng nhập Google (Auth.js)
 
-## Deploy on Vercel
+1. Vào [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials), tạo **OAuth client ID** loại *Web application*.
+2. Thêm *Authorized redirect URI*: `http://localhost:3000/api/auth/callback/google` (và `https://<domain>/api/auth/callback/google` khi chạy thật).
+3. Điền vào `.env.local` (đã có sẵn `AUTH_SECRET`):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+AUTH_GOOGLE_ID=...apps.googleusercontent.com
+AUTH_GOOGLE_SECRET=...
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Chạy lại `npm run dev` (hoặc build lại). Chưa điền thì trang đăng nhập sẽ báo "chưa được bật".
+
+Phiên đăng nhập lưu trong cookie (JWT), không cần cơ sở dữ liệu. Khi đăng nhập, họ tên & email được điền sẵn ở trang thanh toán.
+
+## SEO
+
+- Metadata riêng từng trang (title, description, canonical, Open Graph, Twitter) — `src/lib/seo.ts`
+- JSON-LD: `OnlineStore`, `WebSite` + ô tìm kiếm, `Product`/`Offer` (COD, phí giao hàng, đổi trả), `BreadcrumbList`, `CollectionPage`, `FAQPage`
+- `sitemap.xml`, `robots.txt`, manifest, favicon, ảnh chia sẻ; trang thanh toán `noindex`
+- Trang tĩnh prerender sẵn; slug không tồn tại trả về 404 thật (`src/proxy.ts`)
+
+## Cần chỉnh trước khi chạy thật
+
+1. Thông tin doanh nghiệp (hotline, email, địa chỉ, MST, giấy phép) trong `src/config/site.ts` — đang là giá trị mẫu.
+2. Sản phẩm trong `src/data/products.ts` là dữ liệu mẫu — thay bằng dữ liệu / API thật.
+3. Kết nối lưu đơn hàng trong `saveOrder()`.
+4. Ảnh trong `public/images` lấy từ [Unsplash](https://unsplash.com/license) (miễn phí sử dụng thương mại).
+
+## Cấu trúc
+
+```
+src/
+  app/              # các trang (App Router), sitemap, robots, manifest, icon
+    thanh-toan/actions.ts   # server action đặt hàng
+  components/
+    layout/         # header, menu, tìm kiếm, footer
+    cart/           # nút giỏ hàng, ngăn kéo giỏ hàng
+    checkout/       # form thanh toán
+    product/ listing/ content/ ui/ icons/
+  config/site.ts    # thông tin thương hiệu
+  data/             # danh mục, sản phẩm, chính sách, tỉnh thành
+  lib/              # cart-store, SEO, tiện ích
+  proxy.ts          # trả 404 cho slug không tồn tại
+```
