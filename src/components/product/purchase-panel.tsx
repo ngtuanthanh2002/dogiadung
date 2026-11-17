@@ -9,10 +9,8 @@ import { QuantityControl } from "@/components/cart/cart-drawer";
 import { buttonVariants } from "@/components/ui/button";
 
 type Props = {
-  slug: string;
-  name: string;
-  image: string;
-  price: number;
+  /** Mã sản phẩm — giỏ hàng chỉ lưu mã này, thông tin còn lại lấy từ DB khi hiển thị giỏ. */
+  id: string;
   unit?: string;
   stock: number;
   colors?: ProductColor[];
@@ -20,7 +18,7 @@ type Props = {
 };
 
 /** Chọn màu / kích cỡ / số lượng, thêm vào giỏ hoặc mua ngay (chuyển tới thanh toán). */
-export function PurchasePanel({ slug, name, image, price, unit, stock, colors, sizes }: Props) {
+export function PurchasePanel({ id, unit, stock, colors, sizes }: Props) {
   const router = useRouter();
   const [color, setColor] = useState(colors?.[0]?.name);
   const [size, setSize] = useState<string | undefined>(sizes && sizes.length === 1 ? sizes[0] : undefined);
@@ -28,11 +26,12 @@ export function PurchasePanel({ slug, name, image, price, unit, stock, colors, s
   const [needSize, setNeedSize] = useState(false);
 
   function addToCart(openDrawer: boolean) {
+    if (stock <= 0) return false;
     if (sizes?.length && !size) {
       setNeedSize(true);
       return false;
     }
-    cartActions.add({ slug, name, image, price, unit, color, size, quantity: qty, maxQuantity: stock }, { openDrawer });
+    cartActions.add({ id, color, size, quantity: qty }, { openDrawer });
     return true;
   }
 
@@ -97,16 +96,17 @@ export function PurchasePanel({ slug, name, image, price, unit, stock, colors, s
         </p>
         <div className="mt-3 flex items-center gap-4">
           <QuantityControl value={qty} onChange={(v) => setQty(Math.min(stock, Math.max(1, v)))} max={stock} label="Số lượng" size="md" />
-          <span className="text-[13px] text-muted">Còn {stock} sản phẩm</span>
+          <span className="text-[13px] text-muted">{stock > 0 ? `Còn ${stock} sản phẩm` : "Tạm hết hàng"}</span>
         </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button type="button" onClick={() => addToCart(true)} className={buttonVariants({ variant: "outline", size: "lg", className: "w-full sm:flex-1" })}>
+        <button type="button" disabled={stock <= 0} onClick={() => addToCart(true)} className={buttonVariants({ variant: "outline", size: "lg", className: "w-full sm:flex-1" })}>
           Thêm vào giỏ hàng
         </button>
         <button
           type="button"
+          disabled={stock <= 0}
           onClick={() => {
             if (addToCart(false)) router.push("/thanh-toan");
           }}

@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         // Trang thanh toán / tài khoản không cần index. URL có tham số (?sort, ?page, ?q) đã có canonical về trang gốc.
-        disallow: ["/thanh-toan", "/tai-khoan", "/dang-nhap", "/api/"],
+        disallow: ["/thanh-toan", "/admin", "/dang-nhap", "/api/"],
       },
     ],
     sitemap: absoluteUrl("/sitemap.xml"),

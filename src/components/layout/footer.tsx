@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Banknote, Mail, MapPin, Phone, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import { siteConfig } from "@/config/site";
-import { topCategories } from "@/data/categories";
+import { topLevel } from "@/data/categories";
+import { getCategories } from "@/lib/catalog";
 import { policies } from "@/data/policies";
 import { FacebookIcon, TiktokIcon, ZaloIcon } from "@/components/icons/social-icons";
 import { Logo } from "./logo";
@@ -13,7 +14,8 @@ const services = [
   { icon: RotateCcw, title: "Đổi trả 7 ngày", desc: "Thủ tục đơn giản, nhanh chóng" },
 ];
 
-export function Footer() {
+export async function Footer() {
+  const topCategories = topLevel(await getCategories());
   const { contact, legal } = siteConfig;
 
   return (

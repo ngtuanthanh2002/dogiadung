@@ -1,8 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getCategory } from "@/data/categories";
 import type { Product } from "@/data/types";
-import { cn, discountPercent } from "@/lib/utils";
+import { cn, discountPercent, PLACEHOLDER_IMAGE } from "@/lib/utils";
 import { Price } from "./price";
 
 export function ProductCard({
@@ -16,14 +15,13 @@ export function ProductCard({
   eager?: boolean;
   sizes?: string;
 }) {
-  const category = getCategory(product.categorySlug);
   const pct = discountPercent(product.price, product.originalPrice);
 
   return (
     <article className={cn("group relative", className)}>
       <div className="relative aspect-[4/5] overflow-hidden bg-sand">
         <Image
-          src={product.images[0]}
+          src={product.images[0] ?? PLACEHOLDER_IMAGE}
           alt={product.name}
           fill
           sizes={sizes}
@@ -47,7 +45,7 @@ export function ProductCard({
         )}
       </div>
       <div className="pt-4">
-        {category && <p className="text-[12px] tracking-wide text-muted">{category.name}</p>}
+        {product.categoryName && <p className="text-[12px] tracking-wide text-muted">{product.categoryName}</p>}
         <h3 className="mt-1 text-[15px] leading-snug text-ink decoration-ink/30 underline-offset-4 group-hover:underline">
           <Link href={`/san-pham/${product.slug}`} className="after:absolute after:inset-0">
             {product.name}

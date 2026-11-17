@@ -1,13 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronDown } from "lucide-react";
-import { getChildren, topCategories } from "@/data/categories";
+import type { Category } from "@/data/types";
+import { PLACEHOLDER_IMAGE } from "@/lib/utils";
 
 const linkClass =
   "relative flex h-full items-center gap-1 text-[14px] tracking-wide text-ink-soft transition-colors hover:text-ink after:absolute after:inset-x-0 after:bottom-3 after:h-px after:origin-left after:scale-x-0 after:bg-ink after:transition-transform after:duration-300 hover:after:scale-x-100";
 
 /** Menu desktop (hàng dưới thanh tìm kiếm) — danh mục có bảng thả xuống thuần CSS (hover / focus). */
-export function DesktopNav() {
+export function DesktopNav({ tree }: { tree: (Category & { children: Category[] })[] }) {
   return (
     <nav aria-label="Menu chính" className="container-page h-12">
       <ul className="flex h-full items-center justify-center gap-10">
@@ -16,8 +17,8 @@ export function DesktopNav() {
             Sản phẩm
           </Link>
         </li>
-        {topCategories.map((cat) => {
-          const children = getChildren(cat.slug);
+        {tree.map((cat) => {
+          const children = cat.children;
           return (
             <li key={cat.slug} className="group h-full">
               <Link href={`/danh-muc/${cat.slug}`} className={linkClass} aria-haspopup="true">
@@ -49,7 +50,7 @@ export function DesktopNav() {
                     </Link>
                   </div>
                   <Link href={`/danh-muc/${cat.slug}`} className="relative block aspect-[16/10] overflow-hidden rounded-sm bg-sand" tabIndex={-1}>
-                    <Image src={cat.image} alt={cat.name} fill sizes="480px" className="object-cover" />
+                    <Image src={cat.image || PLACEHOLDER_IMAGE} alt={cat.name} fill sizes="480px" className="object-cover" />
                   </Link>
                 </div>
               </div>

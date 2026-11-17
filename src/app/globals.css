@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Đỏ thương hiệu Đại Kiều — dùng tiết chế cho logo, giá giảm, điểm nhấn */
+  /* Đỏ thương hiệu Phú Ngọ — dùng tiết chế cho logo, giá giảm, điểm nhấn */
   --color-brand-50: #fdf3f2;
   --color-brand-100: #fbe4e2;
   --color-brand-500: #d6352a;

@@ -3,14 +3,13 @@
 import { startTransition, useActionState, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { Banknote, Check, ShoppingBag, X } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { provinces } from "@/data/provinces";
-import { cartActions, cartTotals, useCart } from "@/lib/cart-store";
+import { cartActions, cartTotals, useCartLines } from "@/lib/cart-store";
 import { cn, formatPrice } from "@/lib/utils";
-import { placeOrder, type OrderField, type OrderState } from "@/app/thanh-toan/actions";
-import { QuantityControl } from "@/components/cart/cart-drawer";
+import { placeOrder, type OrderField, type OrderState } from "@/app/(shop)/thanh-toan/actions";
+import { CartLoadState, lineDetails, QuantityControl } from "@/components/cart/cart-drawer";
 import { buttonVariants } from "@/components/ui/button";
 
 const inputClass =
@@ -47,12 +46,9 @@ function Field({
 const initialState: OrderState = { status: "idle" };
 
 export function CheckoutView() {
-  const { lines, ready } = useCart();
+  const { items, lines, ready, loading, error } = useCartLines();
   const [state, dispatch, pending] = useActionState(placeOrder, initialState);
   const [otherReceiver, setOtherReceiver] = useState(false);
-  // Đã đăng nhập Google: điền sẵn họ tên và email
-  const { data: session } = useSession();
-  const profileKey = session?.user?.email ?? "guest";
   const totals = cartTotals(lines, siteConfig.freeShippingThreshold, siteConfig.shippingFee);
   const errors: Partial<Record<OrderField, string>> = state.status === "error" ? state.errors : {};
 
@@ -76,7 +72,7 @@ export function CheckoutView() {
         <h2 className="mt-8 font-serif text-4xl">Cảm ơn bạn đã đặt hàng</h2>
         <p className="mt-4 leading-relaxed text-ink-soft">
           Đơn hàng <span className="font-medium text-ink">{state.orderCode}</span> gồm {state.itemCount} sản phẩm, tổng{" "}
-          <span className="font-medium text-ink">{formatPrice(state.total)}</span>. Nhân viên Đại Kiều sẽ gọi đến số{" "}
+          <span className="font-medium text-ink">{formatPrice(state.total)}</span>. Nhân viên Phú Ngọ sẽ gọi đến số{" "}
           <span className="font-medium text-ink">{state.phone}</span> để xác nhận trước khi giao hàng.
         </p>
         <p className="mt-3 text-sm text-muted">Bạn thanh toán bằng tiền mặt khi nhận hàng.</p>
@@ -89,6 +85,10 @@ export function CheckoutView() {
 
   if (!ready) {
     return <div className="h-96" aria-busy="true" />;
+  }
+
+  if (items.length > 0 && lines.length === 0) {
+    return <CartLoadState loading={loading} error={error} className="mx-auto max-w-xl py-16" />;
   }
 
   // ───── Giỏ hàng trống ─────
@@ -118,8 +118,17 @@ export function CheckoutView() {
       <input
         type="hidden"
         name="cart"
-        value={JSON.stringify(lines.map((l) => ({ slug: l.slug, quantity: l.quantity, color: l.color, size: l.size })))}
+        value={JSON.stringify(
+          lines.filter((l) => !l.outOfStock).map((l) => ({ id: l.id, quantity: l.quantity, color: l.color, size: l.size })),
+        )}
       />
+      {/* Bẫy bot: người dùng thật không thấy ô này */}
+      <div aria-hidden className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+        <label>
+          Website
+          <input type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
+        </label>
+      </div>
 
       <div className="space-y-14">
         {state.status === "error" && (
@@ -134,13 +143,13 @@ export function CheckoutView() {
           </h2>
           <div className="mt-8 grid gap-x-8 gap-y-7 md:grid-cols-2">
             <Field name="fullName" label="Họ và tên *" error={errors.fullName}>
-              <input key={`name-${profileKey}`} id="fullName" name="fullName" autoComplete="name" defaultValue={session?.user?.name ?? ""} required className={inputClass} {...invalid("fullName")} />
+              <input id="fullName" name="fullName" autoComplete="name" required className={inputClass} {...invalid("fullName")} />
             </Field>
             <Field name="phone" label="Số điện thoại *" error={errors.phone}>
               <input id="phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" required className={inputClass} {...invalid("phone")} />
             </Field>
             <Field name="email" label="Địa chỉ email *" error={errors.email} className="md:col-span-2">
-              <input key={`email-${profileKey}`} id="email" name="email" type="email" autoComplete="email" defaultValue={session?.user?.email ?? ""} required className={inputClass} {...invalid("email")} />
+              <input id="email" name="email" type="email" autoComplete="email" required className={inputClass} {...invalid("email")} />
             </Field>
             <Field name="province" label="Tỉnh / Thành phố *" error={errors.province}>
               <select id="province" name="province" required defaultValue="" className={cn(inputClass, "cursor-pointer")} {...invalid("province")}>
@@ -237,33 +246,39 @@ export function CheckoutView() {
           </h2>
           {errors.cart && <p className="mt-3 text-sm text-brand-600">{errors.cart}</p>}
           <ul className="mt-6 divide-y divide-line">
-            {lines.map((line) => (
-              <li key={line.key} className="flex gap-4 py-5 first:pt-0">
-                <span className="relative h-20 w-16 shrink-0 overflow-hidden bg-sand-dark">
-                  <Image src={line.image} alt={line.name} fill sizes="64px" className="object-cover" />
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm leading-snug">{line.name}</p>
-                    <button type="button" onClick={() => cartActions.remove(line.key)} className="-m-1 rounded-full p-1 text-muted transition-colors hover:bg-sand-dark hover:text-brand-600" aria-label={`Xóa ${line.name}`}>
-                      <X className="h-4 w-4" aria-hidden />
-                    </button>
+            {lines.map((line) => {
+              const { product } = line;
+              const details = lineDetails(line);
+              return (
+                <li key={line.key} className="flex gap-4 py-5 first:pt-0">
+                  <span className="relative h-20 w-16 shrink-0 overflow-hidden bg-sand-dark">
+                    <Image src={product.image} alt={product.name} fill sizes="64px" className="object-cover" />
+                  </span>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm leading-snug">{product.name}</p>
+                      <button type="button" onClick={() => cartActions.remove(line.key)} className="-m-1 rounded-full p-1 text-muted transition-colors hover:bg-sand-dark hover:text-brand-600" aria-label={`Xóa ${product.name}`}>
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
+                    {details && <p className="mt-0.5 text-[12px] text-muted">{details}</p>}
+                    <div className="mt-auto flex items-center justify-between pt-2">
+                      {line.outOfStock ? (
+                        <span className="text-[13px] text-brand-600">Tạm hết hàng — không tính vào đơn</span>
+                      ) : (
+                        <QuantityControl
+                          value={line.quantity}
+                          max={line.maxQuantity}
+                          onChange={(v) => cartActions.setQuantity(line.key, v)}
+                          label={`Số lượng ${product.name}`}
+                        />
+                      )}
+                      {!line.outOfStock && <span className="text-sm">{formatPrice(product.price * line.quantity)}</span>}
+                    </div>
                   </div>
-                  {(line.color || line.size || line.unit) && (
-                    <p className="mt-0.5 text-[12px] text-muted">{[line.color, line.size, line.unit && `${formatPrice(line.price)} / ${line.unit}`].filter(Boolean).join(" · ")}</p>
-                  )}
-                  <div className="mt-auto flex items-center justify-between pt-2">
-                    <QuantityControl
-                      value={line.quantity}
-                      max={line.maxQuantity}
-                      onChange={(v) => cartActions.setQuantity(line.key, v)}
-                      label={`Số lượng ${line.name}`}
-                    />
-                    <span className="text-sm">{formatPrice(line.price * line.quantity)}</span>
-                  </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
 
           <dl className="mt-2 space-y-3 border-t border-line pt-6 text-sm">

@@ -5,13 +5,13 @@ import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { siteConfig } from "@/config/site";
-import { cartActions, cartTotals, useCart } from "@/lib/cart-store";
+import { cartActions, cartTotals, useCart, useCartLines, type CartLine } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
 export function CartButton() {
-  const { lines, ready } = useCart();
-  const count = lines.reduce((n, l) => n + l.quantity, 0);
+  const { items, ready } = useCart();
+  const count = items.reduce((n, l) => n + l.quantity, 0);
 
   return (
     <button
@@ -71,8 +71,42 @@ export function QuantityControl({
   );
 }
 
+/** Dòng phụ dưới tên sản phẩm: màu · size · đơn giá theo đơn vị. */
+export function lineDetails(line: CartLine) {
+  const { unit, price } = line.product;
+  return [line.color, line.size, unit && `${formatPrice(price)} / ${unit}`].filter(Boolean).join(" · ");
+}
+
+/** Thông báo trạng thái khi đang tải / lỗi tải thông tin sản phẩm trong giỏ. */
+export function CartLoadState({ loading, error, className }: { loading: boolean; error: boolean; className?: string }) {
+  if (error) {
+    return (
+      <p role="alert" className={`text-sm text-brand-600 ${className ?? ""}`}>
+        Không tải được thông tin giỏ hàng. Vui lòng kiểm tra kết nối và thử lại.
+      </p>
+    );
+  }
+  if (loading) {
+    return (
+      <ul aria-busy="true" aria-label="Đang tải giỏ hàng" className={className}>
+        {[0, 1].map((i) => (
+          <li key={i} className="flex gap-4 py-5">
+            <div className="h-24 w-20 shrink-0 animate-pulse bg-sand" />
+            <div className="flex-1 space-y-2 pt-1">
+              <div className="h-4 w-3/4 animate-pulse bg-sand" />
+              <div className="h-3 w-1/3 animate-pulse bg-sand" />
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return null;
+}
+
 export function CartDrawer() {
-  const { lines, open } = useCart();
+  const { open } = useCart();
+  const { items, lines, loading, error } = useCartLines({ enabled: open });
   const { subtotal, count } = cartTotals(lines, siteConfig.freeShippingThreshold, siteConfig.shippingFee);
   const remaining = Math.max(0, siteConfig.freeShippingThreshold - subtotal);
 
@@ -91,11 +125,13 @@ export function CartDrawer() {
           </div>
           <Dialog.Description className="sr-only">Danh sách sản phẩm trong giỏ hàng</Dialog.Description>
 
-          {lines.length === 0 ? (
+          {items.length > 0 && lines.length === 0 ? (
+            <CartLoadState loading={loading} error={error} className="px-6 py-4" />
+          ) : lines.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
               <ShoppingBag className="h-10 w-10 text-muted" strokeWidth={1.2} aria-hidden />
               <p className="mt-4 font-serif text-xl">Giỏ hàng đang trống</p>
-              <p className="mt-2 text-sm text-muted">Khám phá các sản phẩm của Đại Kiều và thêm vào giỏ hàng.</p>
+              <p className="mt-2 text-sm text-muted">Khám phá các sản phẩm của Phú Ngọ và thêm vào giỏ hàng.</p>
               <Dialog.Close asChild>
                 <Link href="/san-pham" className={buttonVariants({ className: "mt-8" })}>
                   Mua sắm ngay
@@ -114,48 +150,54 @@ export function CartDrawer() {
                 )}
               </p>
               <ul className="flex-1 divide-y divide-line overflow-y-auto px-6">
-                {lines.map((line) => (
-                  <li key={line.key} className="flex gap-4 py-5">
-                    <Link
-                      href={`/san-pham/${line.slug}`}
-                      onClick={() => cartActions.setOpen(false)}
-                      className="group/img relative h-24 w-20 shrink-0 overflow-hidden rounded-sm bg-sand"
-                    >
-                      <Image src={line.image} alt={line.name} fill sizes="80px" className="object-cover transition-transform duration-500 group-hover/img:scale-105" />
-                    </Link>
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <div className="flex items-start justify-between gap-3">
-                        <Link
-                          href={`/san-pham/${line.slug}`}
-                          onClick={() => cartActions.setOpen(false)}
-                          className="text-[15px] leading-snug text-ink transition-colors hover:text-brand-600"
-                        >
-                          {line.name}
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => cartActions.remove(line.key)}
-                          className="-m-1 shrink-0 rounded-full p-1 text-muted transition-colors hover:bg-sand hover:text-brand-600"
-                          aria-label={`Xóa ${line.name}`}
-                        >
-                          <X className="h-4 w-4" aria-hidden />
-                        </button>
+                {lines.map((line) => {
+                  const { product } = line;
+                  const details = lineDetails(line);
+                  return (
+                    <li key={line.key} className="flex gap-4 py-5">
+                      <Link
+                        href={`/san-pham/${product.slug}`}
+                        onClick={() => cartActions.setOpen(false)}
+                        className="group/img relative h-24 w-20 shrink-0 overflow-hidden rounded-sm bg-sand"
+                      >
+                        <Image src={product.image} alt={product.name} fill sizes="80px" className="object-cover transition-transform duration-500 group-hover/img:scale-105" />
+                      </Link>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex items-start justify-between gap-3">
+                          <Link
+                            href={`/san-pham/${product.slug}`}
+                            onClick={() => cartActions.setOpen(false)}
+                            className="text-[15px] leading-snug text-ink transition-colors hover:text-brand-600"
+                          >
+                            {product.name}
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => cartActions.remove(line.key)}
+                            className="-m-1 shrink-0 rounded-full p-1 text-muted transition-colors hover:bg-sand hover:text-brand-600"
+                            aria-label={`Xóa ${product.name}`}
+                          >
+                            <X className="h-4 w-4" aria-hidden />
+                          </button>
+                        </div>
+                        {details && <p className="mt-1 text-[13px] text-muted">{details}</p>}
+                        <div className="mt-auto flex items-center justify-between pt-3">
+                          {line.outOfStock ? (
+                            <p className="text-[13px] text-brand-600">Tạm hết hàng</p>
+                          ) : (
+                            <QuantityControl
+                              value={line.quantity}
+                              max={line.maxQuantity}
+                              onChange={(v) => cartActions.setQuantity(line.key, v)}
+                              label={`Số lượng ${product.name}`}
+                            />
+                          )}
+                          <p className="text-sm font-medium">{formatPrice(product.price * line.quantity)}</p>
+                        </div>
                       </div>
-                      {(line.color || line.size || line.unit) && (
-                        <p className="mt-1 text-[13px] text-muted">{[line.color, line.size, line.unit && `${formatPrice(line.price)} / ${line.unit}`].filter(Boolean).join(" · ")}</p>
-                      )}
-                      <div className="mt-auto flex items-center justify-between pt-3">
-                        <QuantityControl
-                          value={line.quantity}
-                          max={line.maxQuantity}
-                          onChange={(v) => cartActions.setQuantity(line.key, v)}
-                          label={`Số lượng ${line.name}`}
-                        />
-                        <p className="text-sm font-medium">{formatPrice(line.price * line.quantity)}</p>
-                      </div>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
               <div className="border-t border-line px-6 py-6">
                 <div className="flex items-baseline justify-between">

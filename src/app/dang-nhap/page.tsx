@@ -1,49 +1,58 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
-import { Banknote, PackageCheck, Zap } from "lucide-react";
+import { redirect } from "next/navigation";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { getAdminSession } from "@/auth";
 import { siteConfig } from "@/config/site";
-import { pageMetadata } from "@/lib/seo";
 import { LogoMark } from "@/components/layout/logo";
 import { LoginPanel } from "@/components/auth/login-panel";
 
-export const metadata: Metadata = pageMetadata({
-  title: "Đăng nhập",
-  description: `Đăng nhập ${siteConfig.name} bằng tài khoản Google.`,
-  path: "/dang-nhap",
-  noIndex: true,
-});
+export const metadata: Metadata = {
+  title: "Đăng nhập quản trị",
+  description: `Đăng nhập khu vực quản trị ${siteConfig.name}.`,
+  robots: { index: false, follow: false },
+};
 
-const perks = [
-  { icon: Zap, text: "Tự điền họ tên, email khi thanh toán" },
-  { icon: PackageCheck, text: "Quản lý thông tin tài khoản dễ dàng" },
-  { icon: Banknote, text: "Vẫn thanh toán khi nhận hàng như thường" },
-];
+/** Đã đăng nhập (ví dụ phiên "ghi nhớ" còn hạn) → vào thẳng trang quản trị. */
+async function RedirectIfSignedIn() {
+  if (await getAdminSession()) redirect("/admin");
+  return null;
+}
 
+/** Trang đăng nhập độc lập — không dùng header / footer của cửa hàng. */
 export default function LoginPage() {
   return (
-    <div className="container-page flex justify-center py-16 md:py-24">
-      <div className="w-full max-w-md">
-        <div className="text-center">
-          <LogoMark className="mx-auto h-12 w-12" />
-          <h1 className="mt-6 font-serif text-4xl">Đăng nhập</h1>
-          <p className="mt-3 text-muted">Chỉ một bước với tài khoản Google của bạn.</p>
+    <main id="main-content" className="flex min-h-screen flex-1 flex-col items-center justify-center bg-[#f6f4f0] px-4 py-12">
+      <Suspense fallback={null}>
+        <RedirectIfSignedIn />
+      </Suspense>
+
+      <div className="w-full max-w-[400px]">
+        <div className="rounded-2xl border border-line bg-white px-6 py-8 shadow-[0_24px_48px_-28px_rgb(28_26_23/0.25)] sm:px-9 sm:py-10">
+          <div className="flex items-center gap-2.5">
+            <LogoMark className="h-9 w-9" />
+            <span className="font-serif text-[22px] font-medium tracking-tight text-ink">{siteConfig.name}</span>
+          </div>
+
+          <h1 className="mt-8 font-serif text-[28px] leading-tight text-ink">Đăng nhập quản trị</h1>
+          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-muted">
+            <ShieldCheck className="h-4 w-4 shrink-0" strokeWidth={1.7} aria-hidden />
+            Chức năng chỉ dành cho nhà quản trị
+          </p>
+
+          <div className="mt-7">
+            <Suspense fallback={<div className="h-[300px] animate-pulse rounded-lg bg-sand/50" />}>
+              <LoginPanel />
+            </Suspense>
+          </div>
         </div>
 
-        <div className="mt-10 border border-line bg-white/60 p-6 md:p-8">
-          <Suspense fallback={<div className="h-14 animate-pulse rounded-full bg-sand" />}>
-            <LoginPanel />
-          </Suspense>
-        </div>
-
-        <ul className="mt-10 space-y-3">
-          {perks.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-center gap-3 text-sm text-ink-soft">
-              <Icon className="h-[18px] w-[18px] shrink-0 text-muted" strokeWidth={1.5} aria-hidden />
-              {text}
-            </li>
-          ))}
-        </ul>
+        <Link href="/" className="mx-auto mt-6 flex w-fit items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          Quay lại cửa hàng
+        </Link>
       </div>
-    </div>
+    </main>
   );
 }

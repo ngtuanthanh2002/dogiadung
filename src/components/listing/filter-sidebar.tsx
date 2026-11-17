@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { getChildren, topCategories } from "@/data/categories";
-import { getProductsInCategory, products } from "@/data/products";
+import { childrenOf, topLevel } from "@/data/categories";
+import { filterByCategory } from "@/data/products";
+import type { Category, Product } from "@/data/types";
 import { applyFilters, buildListingHref, priceRanges, type ListingParams } from "@/lib/listing";
 import { cn } from "@/lib/utils";
 
@@ -35,11 +36,15 @@ function Indicator({ active, round = false }: { active: boolean; round?: boolean
  * Mỗi lựa chọn là một link GET — hoạt động không cần JavaScript, URL có thể chia sẻ.
  */
 export function FilterSidebar({
+  products,
+  categories,
   basePath,
   activeCategory,
   params,
   idPrefix,
 }: {
+  products: Product[];
+  categories: Category[];
   basePath: string;
   activeCategory?: string;
   params: ListingParams;
@@ -47,7 +52,7 @@ export function FilterSidebar({
 }) {
   // Giữ các bộ lọc khác khi đổi danh mục / khoảng giá; luôn quay về trang 1
   const keep: ListingParams = { ...params, page: undefined };
-  const count = (slug?: string) => applyFilters(slug ? getProductsInCategory(slug) : products, { ...params, sort: undefined }).length;
+  const count = (slug?: string) => applyFilters(slug ? filterByCategory(products, categories, slug) : products, { ...params, sort: undefined }).length;
 
   const catLink = (slug: string | undefined, label: string, level: 0 | 1) => {
     const href = buildListingHref(slug ? `/danh-muc/${slug}` : "/san-pham", keep);
@@ -80,11 +85,11 @@ export function FilterSidebar({
       <Group title="Danh mục">
         <ul className="space-y-0.5">
           <li>{catLink(undefined, "Tất cả sản phẩm", 0)}</li>
-          {topCategories.map((cat) => (
+          {topLevel(categories).map((cat) => (
             <li key={cat.slug} className="pt-2">
               {catLink(cat.slug, cat.name, 0)}
               <ul className="mt-0.5 border-l border-line">
-                {getChildren(cat.slug).map((child) => (
+                {childrenOf(categories, cat.slug).map((child) => (
                   <li key={child.slug}>{catLink(child.slug, child.name, 1)}</li>
                 ))}
               </ul>

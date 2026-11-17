@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
-import { useSession } from "next-auth/react";
-import { ChevronDown, Menu, Phone, UserRound, X } from "lucide-react";
+import { ChevronDown, Menu, Phone, X } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { Logo } from "./logo";
 
@@ -13,7 +12,6 @@ type NavCategory = { slug: string; name: string; children: { slug: string; name:
 export function MobileMenu({ categories }: { categories: NavCategory[] }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
-  const { data: session } = useSession();
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -74,14 +72,6 @@ export function MobileMenu({ categories }: { categories: NavCategory[] }) {
             </Link>
           </nav>
 
-          <Link
-            href={session?.user ? "/tai-khoan" : "/dang-nhap"}
-            onClick={close}
-            className="flex items-center gap-3 border-t border-line px-5 py-4 text-sm transition-colors hover:bg-sand/60"
-          >
-            <UserRound className="h-4 w-4 text-muted" strokeWidth={1.6} aria-hidden />
-            {session?.user ? <span>Tài khoản · <span className="font-medium">{session.user.name}</span></span> : <span>Đăng nhập bằng Google</span>}
-          </Link>
           <a href={siteConfig.contact.hotlineHref} className="flex items-center gap-3 border-t border-line px-5 py-5 text-sm transition-colors hover:bg-sand/60">
             <Phone className="h-4 w-4 text-muted" strokeWidth={1.6} aria-hidden />
             <span className="text-muted">Hotline</span>

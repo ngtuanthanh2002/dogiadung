@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { SlidersHorizontal, X } from "lucide-react";
-import { getProductsInCategory, products, sortOptions, sortProducts } from "@/data/products";
+import { filterByCategory, sortOptions, sortProducts } from "@/data/products";
 import { applyFilters, buildListingHref, parseListingParams, priceLabel } from "@/lib/listing";
+import { getAllProducts, getCategories } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 import { ProductGrid } from "@/components/product/product-card";
 import { buttonVariants } from "@/components/ui/button";
@@ -25,10 +26,14 @@ export async function ListingResults({
   basePath: string;
   categorySlug?: string;
 }) {
-  const params = parseListingParams(await searchParams);
+  const [rawParams, products, categories] = await Promise.all([searchParams, getAllProducts(), getCategories()]);
+  const params = parseListingParams(rawParams);
   const sort = params.sort ?? "moi-nhat";
 
-  const filtered = sortProducts(applyFilters(categorySlug ? getProductsInCategory(categorySlug) : products, params), sort);
+  const filtered = sortProducts(
+    applyFilters(categorySlug ? filterByCategory(products, categories, categorySlug) : products, params),
+    sort,
+  );
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const page = Math.min(params.page ?? 1, totalPages);
   const items = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -59,7 +64,7 @@ export async function ListingResults({
           <span className="hidden text-[13px] text-muted group-open:inline">Đóng</span>
         </summary>
         <div className="pb-6 pt-2">
-          <FilterSidebar basePath={basePath} activeCategory={categorySlug} params={params} idPrefix="m" />
+          <FilterSidebar products={products} categories={categories} basePath={basePath} activeCategory={categorySlug} params={params} idPrefix="m" />
         </div>
       </details>
 
@@ -68,7 +73,7 @@ export async function ListingResults({
         className="scrollbar-none hidden lg:sticky lg:top-28 lg:block lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto lg:pr-2"
         aria-label="Bộ lọc sản phẩm"
       >
-        <FilterSidebar basePath={basePath} activeCategory={categorySlug} params={params} idPrefix="d" />
+        <FilterSidebar products={products} categories={categories} basePath={basePath} activeCategory={categorySlug} params={params} idPrefix="d" />
       </aside>
 
       <div className="min-w-0">

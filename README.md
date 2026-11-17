@@ -1,85 +1,77 @@
-# Đại Kiều — Website bán hàng (Next.js)
+# Phú Ngọ — Website bán hàng (Next.js)
 
-Website bán hàng gia dụng, quần áo và vải. Giao diện tối giản, sang trọng; chức năng tương tự daikieu.com:
+Website bán hàng gia dụng, quần áo và vải. Giao diện tối giản, sang trọng; gồm:
 tìm kiếm, xem theo danh mục, trang sản phẩm (chọn màu / kích cỡ / số lượng), giỏ hàng và đặt hàng
-**thanh toán khi nhận hàng (COD)**.
+**thanh toán khi nhận hàng (COD)**. Khách **không cần tài khoản** — không có đăng nhập Google hay đăng ký.
+
+Dữ liệu (sản phẩm, danh mục, đơn hàng) lưu trên **Neon PostgreSQL**, ảnh lưu trên **ImageKit**.
+👉 **Hướng dẫn cài đặt từng bước & cách dùng trang quản trị: [docs/setup.md](docs/setup.md)**
 
 ## Chạy dự án
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
-npm run build && npm run start   # bản production
+cp .env.example .env.local      # rồi điền giá trị theo docs/setup.md
+npm run db:setup && npm run db:seed
+npm run dev                     # http://localhost:3000
 ```
 
-Đặt domain thật cho sitemap, canonical, Open Graph:
-
-```bash
-NEXT_PUBLIC_SITE_URL=https://ten-mien-cua-ban.com
-```
+| Lệnh | Việc |
+| --- | --- |
+| `npm run db:check` | Kiểm tra kết nối Neon, đếm dữ liệu |
+| `npm run db:setup` | Tạo / cập nhật bảng (an toàn khi chạy lại) |
+| `npm run db:seed` | Nạp danh mục + sản phẩm mẫu |
+| `npm run imagekit:check` | Kiểm tra kết nối ImageKit |
+| `npm run build && npm run start` | Bản production (build cần `DATABASE_URL`) |
 
 ## Các trang
 
 | Đường dẫn | Nội dung |
 | --- | --- |
-| `/` | Trang chủ: banner, dải danh mục con, 10 sản phẩm nổi bật, khối theo từng danh mục lớn, 15 sản phẩm gợi ý |
-| `/san-pham` | Tất cả sản phẩm: bộ lọc bên trái (danh mục, khoảng giá `?min=&max=`, đang giảm giá `?sale=1`), tìm kiếm `?q=`, sắp xếp `?sort=` |
-| `/danh-muc/[slug]` | Hàng gia dụng (nấu nướng, làm mát & sưởi, vệ sinh nhà cửa, nhà bếp, chăn ga gối, đèn & trang trí, nội thất), Quần áo, Vải |
+| `/` | Trang chủ: banner, dải danh mục con, sản phẩm nổi bật, khối theo từng danh mục lớn, sản phẩm gợi ý |
+| `/san-pham` | Tất cả sản phẩm: bộ lọc bên trái (danh mục, khoảng giá, đang giảm giá), tìm kiếm `?q=`, sắp xếp `?sort=` |
+| `/danh-muc/[slug]` | Sản phẩm theo danh mục |
 | `/san-pham/[slug]` | Chi tiết sản phẩm, thêm vào giỏ / mua ngay |
 | `/thanh-toan` | Giỏ hàng + thông tin nhận hàng + đặt hàng COD |
-| `/dang-nhap`, `/tai-khoan` | Đăng nhập bằng Google, trang tài khoản (đăng xuất) |
 | `/gioi-thieu`, `/lien-he`, `/chinh-sach/[slug]` | Giới thiệu, liên hệ, chính sách |
+| `/dang-nhap` | Đăng nhập **quản trị** (1 tài khoản duy nhất, khai báo trong `.env.local`) — mở từ icon người dùng ở góc phải header |
+| `/admin` | Trang quản trị: tổng quan, đơn hàng, sản phẩm, danh mục, khách hàng |
 
 ## Chức năng
 
-- **Tìm kiếm**: thanh tìm kiếm giữa header, hiện "Tìm kiếm phổ biến" khi bấm vào; menu danh mục nằm ngay bên dưới.
-- **Giỏ hàng**: lưu trong trình duyệt (`src/lib/cart-store.ts`), mở dạng ngăn kéo từ biểu tượng túi.
-- **Đặt hàng**: server action `src/app/thanh-toan/actions.ts` kiểm tra dữ liệu và **tự tính lại tổng tiền** từ dữ liệu sản phẩm.
-  Đơn hàng hiện **chưa được lưu** — cần nối hàm `saveOrder()` với API / cơ sở dữ liệu / email.
-- Vải bán theo mét (`unit` trong dữ liệu sản phẩm), quần áo có chọn kích cỡ.
-
-## Đăng nhập Google (Auth.js)
-
-1. Vào [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials), tạo **OAuth client ID** loại *Web application*.
-2. Thêm *Authorized redirect URI*: `http://localhost:3000/api/auth/callback/google` (và `https://<domain>/api/auth/callback/google` khi chạy thật).
-3. Điền vào `.env.local` (đã có sẵn `AUTH_SECRET`):
-
-```bash
-AUTH_GOOGLE_ID=...apps.googleusercontent.com
-AUTH_GOOGLE_SECRET=...
-```
-
-4. Chạy lại `npm run dev` (hoặc build lại). Chưa điền thì trang đăng nhập sẽ báo "chưa được bật".
-
-Phiên đăng nhập lưu trong cookie (JWT), không cần cơ sở dữ liệu. Khi đăng nhập, họ tên & email được điền sẵn ở trang thanh toán.
+- **Giỏ hàng**: lưu trong trình duyệt, chỉ lưu mã sản phẩm + số lượng (`src/lib/cart-store.ts`); thông tin & giá lấy mới từ `/api/cart`.
+- **Đặt hàng**: `src/app/(shop)/thanh-toan/actions.ts` → hàm DB `place_order` tạo đơn và trừ tồn kho trong một giao dịch, giá tính lại từ DB.
+- **Quản trị**: đăng sản phẩm (tải ảnh lên ImageKit), quản lý danh mục, xử lý đơn (hủy đơn tự hoàn kho), xem khách đã đặt hàng.
+- Vải bán theo mét (`unit`), quần áo có chọn kích cỡ / màu.
 
 ## SEO
 
 - Metadata riêng từng trang (title, description, canonical, Open Graph, Twitter) — `src/lib/seo.ts`
 - JSON-LD: `OnlineStore`, `WebSite` + ô tìm kiếm, `Product`/`Offer` (COD, phí giao hàng, đổi trả), `BreadcrumbList`, `CollectionPage`, `FAQPage`
-- `sitemap.xml`, `robots.txt`, manifest, favicon, ảnh chia sẻ; trang thanh toán `noindex`
-- Trang tĩnh prerender sẵn; slug không tồn tại trả về 404 thật (`src/proxy.ts`)
+- `sitemap.xml` (đọc từ DB), `robots.txt` (chặn `/admin`, `/dang-nhap`, `/thanh-toan`), manifest, favicon, ảnh chia sẻ
 
 ## Cần chỉnh trước khi chạy thật
 
 1. Thông tin doanh nghiệp (hotline, email, địa chỉ, MST, giấy phép) trong `src/config/site.ts` — đang là giá trị mẫu.
-2. Sản phẩm trong `src/data/products.ts` là dữ liệu mẫu — thay bằng dữ liệu / API thật.
-3. Kết nối lưu đơn hàng trong `saveOrder()`.
-4. Ảnh trong `public/images` lấy từ [Unsplash](https://unsplash.com/license) (miễn phí sử dụng thương mại).
+2. Sản phẩm mẫu: xóa / sửa trong trang `/admin/san-pham` (hoặc không chạy `db:seed`).
+3. Ảnh mẫu trong `public/images` lấy từ [Unsplash](https://unsplash.com/license) (miễn phí sử dụng thương mại).
 
 ## Cấu trúc
 
 ```
 src/
-  app/              # các trang (App Router), sitemap, robots, manifest, icon
-    thanh-toan/actions.ts   # server action đặt hàng
-  components/
-    layout/         # header, menu, tìm kiếm, footer
-    cart/           # nút giỏ hàng, ngăn kéo giỏ hàng
-    checkout/       # form thanh toán
-    product/ listing/ content/ ui/ icons/
-  config/site.ts    # thông tin thương hiệu
-  data/             # danh mục, sản phẩm, chính sách, tỉnh thành
-  lib/              # cart-store, SEO, tiện ích
-  proxy.ts          # trả 404 cho slug không tồn tại
+  app/
+    (shop)/           # các trang cửa hàng (dùng header/footer chung)
+    admin/            # trang quản trị (layout riêng) + Server Actions
+    api/cart/         # thông tin sản phẩm cho giỏ hàng
+  auth.ts             # đăng nhập quản trị (Auth.js, 1 tài khoản từ biến môi trường)
+  components/         # layout, cart, checkout, product, listing, admin, ui
+  db/                 # schema.ts (cấu trúc DB), seed-*.ts (dữ liệu mẫu)
+  lib/
+    catalog.ts        # đọc sản phẩm / danh mục cho cửa hàng (có cache)
+    admin/            # truy vấn & quyền cho trang quản trị
+    db.ts, imagekit.ts
+  proxy.ts            # chặn /admin khi chưa đăng nhập; 404 trang chính sách sai
+scripts/              # db.ts, imagekit-check.ts
+docs/setup.md         # hướng dẫn cài đặt & sử dụng
 ```

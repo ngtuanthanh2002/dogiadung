@@ -59,7 +59,7 @@ export function buildListingHref(basePath: string, params: ListingParams) {
 
 /** Áp dụng tìm kiếm + khoảng giá + giảm giá lên danh sách (chưa sắp xếp). */
 export function applyFilters(list: Product[], params: ListingParams) {
-  const searched = params.q ? searchProducts(params.q).filter((p) => list.includes(p)) : list;
+  const searched = params.q ? searchProducts(list, params.q) : list;
   return searched.filter(
     (p) =>
       (!params.min || p.price >= params.min) &&

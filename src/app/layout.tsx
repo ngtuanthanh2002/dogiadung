@@ -2,10 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro, Playfair_Display } from "next/font/google";
 import { siteConfig } from "@/config/site";
 import { DEFAULT_OG_IMAGE, absoluteUrl } from "@/lib/seo";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { JsonLd } from "@/components/ui/json-ld";
-import { AuthSessionProvider } from "@/components/auth/session-provider";
 import "./globals.css";
 
 const beVietnam = Be_Vietnam_Pro({
@@ -122,13 +119,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Bỏ qua đến nội dung chính
         </a>
         <JsonLd data={[organizationJsonLd, websiteJsonLd]} />
-        <AuthSessionProvider>
-          <Header />
-          <main id="main-content" className="flex-1">
-            {children}
-          </main>
-          <Footer />
-        </AuthSessionProvider>
+        {/* Header/Footer cửa hàng nằm ở app/(shop)/layout.tsx; trang quản trị có layout riêng ở app/admin */}
+        {children}
       </body>
     </html>
   );

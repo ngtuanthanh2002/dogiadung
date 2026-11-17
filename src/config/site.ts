@@ -3,25 +3,26 @@
  * Thay các giá trị dưới đây bằng thông tin thật của doanh nghiệp trước khi triển khai.
  */
 export const siteConfig = {
-  name: "Đại Kiều",
-  legalName: "Công ty TNHH Đại Kiều",
-  shortName: "Đại Kiều",
+  name: "Phú Ngọ",
+  legalName: "Công ty TNHH MTV Phú Ngọ Group",
+  shortName: "Phú Ngọ",
   slogan: "Hàng gia dụng, quần áo & vải chọn lọc",
   description:
-    "Đại Kiều — cửa hàng hàng gia dụng, quần áo và vải chất lượng. Thiết bị nấu nướng, làm mát, vệ sinh nhà cửa, thời trang và vải may mặc. Thanh toán khi nhận hàng, giao hàng toàn quốc.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://daikieu.com",
+    "Phú Ngọ — cửa hàng hàng gia dụng, quần áo và vải chất lượng. Thiết bị nấu nướng, làm mát, vệ sinh nhà cửa, thời trang và vải may mặc. Thanh toán khi nhận hàng, giao hàng toàn quốc.",
+  // TODO: đặt NEXT_PUBLIC_SITE_URL = tên miền thật (dùng cho sitemap, canonical, Open Graph)
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://phungo.vn",
   locale: "vi_VN",
   language: "vi",
-  keywords: ["hàng gia dụng", "thiết bị nấu nướng", "quạt", "máy hút bụi", "quần áo", "váy đầm", "vải may mặc", "vải linen", "Đại Kiều"],
-  // TODO: cập nhật thông tin liên hệ thật
+  keywords: ["hàng gia dụng", "thiết bị nấu nướng", "quạt", "máy hút bụi", "quần áo", "váy đầm", "vải may mặc", "vải linen", "Phú Ngọ"],
   contact: {
-    hotline: "1900 6868",
-    hotlineHref: "tel:19006868",
-    email: "cskh@daikieu.com",
-    address: "123 Nguyễn Văn Linh, TP. Hồ Chí Minh",
-    streetAddress: "123 Nguyễn Văn Linh",
-    addressLocality: "TP. Hồ Chí Minh",
-    addressRegion: "TP. Hồ Chí Minh",
+    hotline: "0368 174 500",
+    hotlineHref: "tel:0368174500",
+    // TODO: thay bằng email thật của doanh nghiệp
+    email: "cskh@phungo.vn",
+    address: "Số 75 Đường 11, Phường Thủ Đức, Thành phố Hồ Chí Minh",
+    streetAddress: "Số 75 Đường 11",
+    addressLocality: "Phường Thủ Đức",
+    addressRegion: "Thành phố Hồ Chí Minh",
     postalCode: "700000",
     workingHours: "9:00 – 22:00, tất cả các ngày",
   },

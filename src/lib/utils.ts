@@ -39,6 +39,36 @@ export function formatDate(iso: string) {
   return dateFormatter.format(new Date(iso));
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Asia/Ho_Chi_Minh",
+});
+
+/** "16/11/2026, 14:05" theo giờ Việt Nam. */
+export function formatDateTime(iso: string) {
+  return dateTimeFormatter.format(new Date(iso));
+}
+
+/** Ảnh hiển thị khi sản phẩm / danh mục chưa có ảnh. */
+export const PLACEHOLDER_IMAGE = "/images/og-default.jpg";
+
+/** "Nồi gang tráng men 24cm" → "noi-gang-trang-men-24cm" */
+export function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/g, "");
+}
+
 /** Cắt chuỗi theo ranh giới từ, thêm "…" — dùng cho meta description. */
 export function truncate(text: string, max = 155) {
   if (text.length <= max) return text;
