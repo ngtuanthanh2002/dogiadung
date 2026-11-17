@@ -4,31 +4,35 @@ import { randomInt } from "node:crypto";
 import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 import { siteConfig } from "@/config/site";
-import { provinces } from "@/data/provinces";
 import { getProductsByIds, PRODUCTS_TAG } from "@/lib/catalog";
 import { db } from "@/lib/db";
+import { fullAddress, readOrderForm, validateOrderForm, type OrderErrors } from "@/lib/order-validation";
 
-export type OrderField =
-  | "fullName"
-  | "phone"
-  | "email"
-  | "province"
-  | "ward"
-  | "address"
-  | "receiverName"
-  | "receiverPhone"
-  | "agree"
-  | "cart";
+export type { OrderField } from "@/lib/order-validation";
+
+/** Chi tiết đơn vừa đặt — hiển thị trong hộp "Đặt hàng thành công". Giá lấy từ DB. */
+export type PlacedOrder = {
+  code: string;
+  createdAt: string;
+  items: { name: string; image: string; quantity: number; unitPrice: number; unit: string | null; color: string | null; size: string | null }[];
+  itemCount: number;
+  subtotal: number;
+  shippingFee: number;
+  total: number;
+  customerName: string;
+  phone: string;
+  email: string;
+  address: string;
+  receiver: { name: string; phone: string } | null;
+  note: string;
+};
 
 export type OrderState =
   | { status: "idle" }
-  | { status: "error"; message: string; errors: Partial<Record<OrderField, string>> }
-  | { status: "success"; orderCode: string; total: number; itemCount: number; phone: string; fullName: string };
+  | { status: "error"; message: string; errors: OrderErrors }
+  | { status: "success"; order: PlacedOrder };
 
 type SubmittedLine = { id: string; quantity: number; color?: string; size?: string };
-
-const PHONE_RE = /^(0|\+84)(3|5|7|8|9)\d{8}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /**
  * Chống spam đơn đơn giản: tối đa 5 đơn / 10 phút cho mỗi IP (trong bộ nhớ của từng máy chủ).
@@ -65,7 +69,6 @@ function text(formData: FormData, key: string, max = 200) {
  * (không tin giá gửi lên từ trình duyệt).
  */
 export async function placeOrder(_prev: OrderState, formData: FormData): Promise<OrderState> {
-  const errors: Partial<Record<OrderField, string>> = {};
 
   // Ô "website" bị ẩn với người thật — bot điền vào thì bỏ qua
   if (text(formData, "website")) {
@@ -80,28 +83,9 @@ export async function placeOrder(_prev: OrderState, formData: FormData): Promise
     };
   }
 
-  const fullName = text(formData, "fullName", 80);
-  const phone = text(formData, "phone", 20).replace(/[\s.-]/g, "");
-  const email = text(formData, "email", 120);
-  const province = text(formData, "province", 60);
-  const ward = text(formData, "ward", 80);
-  const address = text(formData, "address", 200);
-  const otherReceiver = formData.get("otherReceiver") === "on";
-  const receiverName = text(formData, "receiverName", 80);
-  const receiverPhone = text(formData, "receiverPhone", 20).replace(/[\s.-]/g, "");
-  const note = text(formData, "note", 500);
-
-  if (fullName.length < 2) errors.fullName = "Vui lòng nhập họ và tên";
-  if (!PHONE_RE.test(phone)) errors.phone = "Số điện thoại không hợp lệ";
-  if (!EMAIL_RE.test(email)) errors.email = "Email không hợp lệ";
-  if (!provinces.includes(province as (typeof provinces)[number])) errors.province = "Vui lòng chọn tỉnh / thành phố";
-  if (ward.length < 2) errors.ward = "Vui lòng nhập phường / xã";
-  if (address.length < 5) errors.address = "Vui lòng nhập địa chỉ cụ thể";
-  if (otherReceiver) {
-    if (receiverName.length < 2) errors.receiverName = "Vui lòng nhập tên người nhận";
-    if (!PHONE_RE.test(receiverPhone)) errors.receiverPhone = "Số điện thoại người nhận không hợp lệ";
-  }
-  if (formData.get("agree") !== "on") errors.agree = "Vui lòng đồng ý với điều khoản để tiếp tục";
+  const form = readOrderForm(formData);
+  const { fullName, phone, email, province, ward, address, otherReceiver, receiverName, receiverPhone, note } = form;
+  const errors = validateOrderForm(form);
 
   let submitted: SubmittedLine[] = [];
   try {
@@ -151,7 +135,7 @@ export async function placeOrder(_prev: OrderState, formData: FormData): Promise
 
   // Lưu đơn + trừ tồn kho trong một giao dịch (hàm place_order trong DB, xem src/db/schema.ts).
   // Giá được lấy lại từ DB tại thời điểm đặt.
-  let result: { out_code: string; out_total: number; out_count: number } | undefined;
+  let result: { out_id: string | number; out_code: string; out_total: number; out_count: number } | undefined;
   for (let attempt = 0; attempt < 3 && !result; attempt++) {
     try {
       const rows = (await db()`
@@ -160,7 +144,7 @@ export async function placeOrder(_prev: OrderState, formData: FormData): Promise
           ${JSON.stringify(orderItems)}::jsonb,
           ${siteConfig.freeShippingThreshold}, ${siteConfig.shippingFee}
         )
-      `) as { out_code: string; out_total: number; out_count: number }[];
+      `) as { out_id: string | number; out_code: string; out_total: number; out_count: number }[];
       result = rows[0];
     } catch (error) {
       const err = error as { message?: string; code?: string; detail?: string };
@@ -185,12 +169,44 @@ export async function placeOrder(_prev: OrderState, formData: FormData): Promise
   // Tồn kho / số đã bán thay đổi → làm mới cache sản phẩm (cửa hàng vẫn phục vụ bản cũ trong lúc tải lại)
   revalidateTag(PRODUCTS_TAG, "max");
 
-  return {
-    status: "success",
-    orderCode: result.out_code,
-    total: result.out_total,
+  // Chi tiết đơn để hiển thị cho khách. Đơn ĐÃ được lưu — nếu bước đọc lại này lỗi thì vẫn báo thành công
+  // với thông tin tối thiểu, tuyệt đối không báo lỗi (khách sẽ đặt lại → trùng đơn).
+  const placed: PlacedOrder = {
+    code: result.out_code,
+    createdAt: new Date().toISOString(),
+    items: [],
     itemCount: result.out_count,
+    subtotal: result.out_total,
+    shippingFee: 0,
+    total: result.out_total,
+    customerName: fullName,
     phone,
-    fullName,
+    email,
+    address: fullAddress({ address, ward, province }),
+    receiver: otherReceiver ? { name: receiverName, phone: receiverPhone } : null,
+    note,
   };
+  try {
+    const [row] = (await db()`
+      SELECT o.subtotal, o.shipping_fee, o.total, o.created_at,
+             json_agg(json_build_object(
+               'name', oi.product_name, 'image', oi.image, 'quantity', oi.quantity, 'unitPrice', oi.unit_price,
+               'unit', oi.unit, 'color', oi.color, 'size', oi.size
+             ) ORDER BY oi.id) AS items
+      FROM orders o JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.id = ${result.out_id}
+      GROUP BY o.id
+    `) as { subtotal: number; shipping_fee: number; total: number; created_at: Date | string; items: PlacedOrder["items"] }[];
+    if (row) {
+      placed.items = row.items;
+      placed.subtotal = row.subtotal;
+      placed.shippingFee = row.shipping_fee;
+      placed.total = row.total;
+      placed.createdAt = row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at);
+    }
+  } catch (error) {
+    console.error("[order] Đã lưu đơn nhưng không đọc lại được chi tiết:", error instanceof Error ? error.message : error);
+  }
+
+  return { status: "success", order: placed };
 }
